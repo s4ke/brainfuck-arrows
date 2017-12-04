@@ -140,18 +140,18 @@ runBFArrow :: BFArrow a b -> State -> a -> IO (b, State)
 runBFArrow arrow state a = runKleisli (unliftState arrow) (a, state)
 
 interpret :: Op -> BFArrow Int64 Int64
-interpret IncPtr = (stateArr (\state -> let (cur:rest) = stack state in State {pre = cur:pre state, stack = rest})) >>> arr (+1)
-interpret DecPtr = (stateArr (\state -> let (cur:rest) = pre state in State {stack = cur:stack state, pre = rest})) >>> arr (+1)
-interpret IncVal = (stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur + 1):rest})) >>> arr (+1)
+interpret IncPtr = stateArr (\state -> let (cur:rest) = stack state in State {pre = cur:pre state, stack = rest}) >>> arr (+1)
+interpret DecPtr = stateArr (\state -> let (cur:rest) = pre state in State {stack = cur:stack state, pre = rest}) >>> arr (+1)
+interpret IncVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur + 1):rest}) >>> arr (+1)
 interpret DecVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur - 1):rest}) >>> arr (+1)
-interpret PutCh = (liftState $ Kleisli (\state -> let (cur:rest) = stack state
+interpret PutCh = liftState (Kleisli (\state -> let (cur:rest) = stack state
                                                   in putStr (show cur) >>
                                                   return State {
                                                     pre = pre state,
                                                     stack = cur:rest
                                                   }
                                         )) >>> arr (+1)
-interpret GetCh = (liftState $ Kleisli (\state -> getChar >>=
+interpret GetCh = liftState (Kleisli (\state -> getChar >>=
                                                      \val -> return State {
                                                         pre = pre state,
                                                         stack = fromIntegral (digitToInt val):drop 1 (stack state)
@@ -173,19 +173,16 @@ interpret (LoopEnd (Just startPos)) = BFArrow { kleisli = second (arr (\state ->
                                             }
 
 inBounds :: Array Int64 e -> Int64 -> Bool
-inBounds array idx = let (lo, hi) = bounds array in (traceShowId idx) >= lo && idx <= hi
+inBounds array idx = let (lo, hi) = bounds array in idx >= lo && idx <= hi
 
--- head ((loop (\(x, y) -> (y, x:map (+1) y)) >>> dropWhile (\a -> a < 10)) 1)
-
--- do while current position is in bounds
---runProgram :: Program -> BFArrow Int64 Int64
---runProgram program = loop (first (arr repeat) >>> arr (\(x:xs,y) -> (xs, x:y)) >>> arr swap) >>> arr (dropWhile (inBounds program)) >>> arr head
-
---(interpret (program!x)
--- do while current position is in bounds
 runProgram :: Program -> BFArrow Int64 Int64
-runProgram program = loop (arr (\(x,y) -> (y, (x, (mapArr (arr (+1)), y)))) >>> second (second app >>> arr (uncurry (:))))
-                        >>> arr (dropWhile (inBounds program)) >>> arr head
+runProgram program =
+    arr inBoundsCase >>>
+    arr id ||| (arr (\idx -> (interpret (program!idx), idx)) >>> app >>> runProgram program)
+        where
+          inBoundsCase idx
+            | program `inBounds` idx = Right idx
+            | otherwise = Left idx
 
 helloWorld :: Program
 helloWorld = parse "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
