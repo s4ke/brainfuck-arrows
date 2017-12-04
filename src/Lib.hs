@@ -43,7 +43,7 @@ type End = Int64
 type Program = Array Int64 Op
 
 calculateBraceIndexes :: [Op] -> [BraceIndexes]
-calculateBraceIndexes ops = let indexedOps = zip [1..] ops
+calculateBraceIndexes ops = let indexedOps = zip [0..] ops
                             in snd $ foldl' (flip handleOpenClose) ([],[]) indexedOps
                             where
                               handleOpen :: IndexedOp -> [Start] -> [Start]
@@ -139,13 +139,16 @@ unliftState = kleisli
 runBFArrow :: BFArrow a b -> State -> a -> IO (b, State)
 runBFArrow arrow state a = runKleisli (unliftState arrow) (a, state)
 
+toChar :: Int64 -> Char
+toChar val = toEnum (fromIntegral val)
+
 interpret :: Op -> BFArrow Int64 Int64
 interpret IncPtr = stateArr (\state -> let (cur:rest) = stack state in State {pre = cur:pre state, stack = rest}) >>> arr (+1)
 interpret DecPtr = stateArr (\state -> let (cur:rest) = pre state in State {stack = cur:stack state, pre = rest}) >>> arr (+1)
 interpret IncVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur + 1):rest}) >>> arr (+1)
 interpret DecVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur - 1):rest}) >>> arr (+1)
 interpret PutCh = liftState (Kleisli (\state -> let (cur:rest) = stack state
-                                                  in putStr (show cur) >>
+                                                  in putStr (show (toChar cur)) >>
                                                   return State {
                                                     pre = pre state,
                                                     stack = cur:rest
@@ -171,6 +174,7 @@ interpret (LoopEnd (Just startPos)) = BFArrow { kleisli = second (arr (\state ->
                                                           >>> arr unassoc
                                                           >>> first (arr swap >>> app)
                                             }
+--interpret x = error $ "unexpected " ++ (show x)
 
 inBounds :: Array Int64 e -> Int64 -> Bool
 inBounds array idx = let (lo, hi) = bounds array in idx >= lo && idx <= hi
@@ -188,4 +192,4 @@ helloWorld :: Program
 helloWorld = parse "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
 
 someFunc :: IO ()
-someFunc = runBFArrow (runProgram $ traceShowId $ helloWorld) State {pre = [], stack = []} 0 >>= print
+someFunc = runBFArrow (runProgram $ helloWorld) State {pre = repeat 0, stack = repeat 0} 0 >>= \(pos, state) -> putStrLn (show pos)
