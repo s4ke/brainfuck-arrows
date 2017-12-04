@@ -188,4 +188,4 @@ helloWorld :: Program
 helloWorld = parse "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
 
 someFunc :: IO ()
-someFunc = runBFArrow (runProgram helloWorld) State {pre = [], stack = [0]} 0 >>= print
+someFunc = runBFArrow (runProgram $ traceShowId $ helloWorld) State {pre = [], stack = []} 0 >>= print
