@@ -148,7 +148,7 @@ interpret DecPtr = stateArr (\state -> let (cur:rest) = pre state in State {stac
 interpret IncVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur + 1):rest}) >>> arr (+1)
 interpret DecVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur - 1):rest}) >>> arr (+1)
 interpret PutCh = liftState (Kleisli (\state -> let (cur:rest) = stack state
-                                                  in putStr (show (toChar cur)) >>
+                                                  in putChar (toChar cur) >>
                                                   return State {
                                                     pre = pre state,
                                                     stack = cur:rest
