@@ -8,6 +8,7 @@ module Control.Arrow.BrainFuck.BFArrow(
   assoc,
   unassoc,
   liftState,
+  withState,
   unliftState,
   stateArr,
   liftFromKleisli,
@@ -49,21 +50,13 @@ instance Category BFArrow where
 -- idea from https://hackage.haskell.org/package/arrows-0.4.4.1/docs/src/Control-Arrow-Transformer-State.html#StateArrow
 instance Arrow BFArrow where
   arr f = BFArrow { kleisli = first (arr f) }
-  first f = BFArrow { kleisli = arr swapsnd >>> first (kleisli f) >>> arr swapsnd }
-    where
-      swapsnd :: ((a, b), c) -> ((a, c), b)
-      swapsnd ~(~(x, y), z) = ((x, z), y)
+  first f = BFArrow { kleisli = swap23 >>> first (kleisli f) >>> swap23 }
 
 instance ArrowLoop BFArrow where
-  loop f = BFArrow {kleisli = loop (arr assoc >>> second (arr swap) >>> arr unassoc
-                                    >>> kleisli f
-                                    >>> arr assoc >>> second (arr swap) >>> arr unassoc)
-                   }
+  loop f = BFArrow { kleisli = loop (swap23 >>> kleisli f >>> swap23) }
 
 instance ArrowApply BFArrow where
-  app = first (arr kleisli) >>> BFArrow {
-          kleisli = arr assoc >>> app
-        }
+  app = first (arr kleisli) >>> BFArrow { kleisli = arr assoc >>> app }
 
 -- idea from https://hackage.haskell.org/package/arrows-0.4.4.1/docs/src/Control-Arrow-Transformer-State.html#StateArrow
 instance ArrowChoice BFArrow where
@@ -79,8 +72,17 @@ instance ArrowChoice BFArrow where
   Functions to use BFArrow with
 -}
 
+duplicate :: (Arrow arr) => arr a (a, a)
+duplicate = arr id &&& arr id
+
+swap23 :: (Arrow arr) => arr ((a, b), c) ((a, c), b)
+swap23 = assoc ^>> second (arr swap) >>^ unassoc
+
 liftState :: Kleisli IO State State -> BFArrow a a
-liftState kleisli = BFArrow { kleisli = second kleisli }
+liftState fn = BFArrow { kleisli = second fn }
+
+withState :: Kleisli IO (a, State) b -> BFArrow a b
+withState fn = BFArrow { kleisli = second duplicate >>> arr unassoc >>> first fn }
 
 stateArr :: (State -> State) -> BFArrow a a
 stateArr fn = liftState (arr fn)

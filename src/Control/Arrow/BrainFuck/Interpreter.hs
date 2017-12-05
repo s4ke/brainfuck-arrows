@@ -29,10 +29,18 @@ toChar :: Int64 -> Char
 toChar val = toEnum (fromIntegral val)
 
 interpret :: Op -> BFArrow Int64 Int64
-interpret IncPtr = stateArr (\state -> let (cur:rest) = stack state in State {pre = cur:pre state, stack = rest}) >>> arr (+1)
-interpret DecPtr = stateArr (\state -> let (cur:rest) = pre state in State {stack = cur:stack state, pre = rest}) >>> arr (+1)
-interpret IncVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur + 1):rest}) >>> arr (+1)
-interpret DecVal = stateArr (\state -> let (cur:rest) = stack state in State {pre = pre state, stack = (cur - 1):rest}) >>> arr (+1)
+interpret IncPtr = stateArr (\state -> let (cur:rest) = stack state in
+                                State {pre = cur:pre state, stack = rest}
+                            ) >>> arr (+1)
+interpret DecPtr = stateArr (\state -> let (cur:rest) = pre state in
+                                State {stack = cur:stack state, pre = rest}
+                            ) >>> arr (+1)
+interpret IncVal = stateArr (\state -> let (cur:rest) = stack state in
+                                State {pre = pre state, stack = (cur + 1):rest}
+                            ) >>> arr (+1)
+interpret DecVal = stateArr (\state -> let (cur:rest) = stack state in
+                                State {pre = pre state, stack = (cur - 1):rest}
+                            ) >>> arr (+1)
 interpret PutCh = liftState (Kleisli (\state -> let (cur:rest) = stack state
                                                   in putChar (toChar cur) >>
                                                   return State {
@@ -46,20 +54,16 @@ interpret GetCh = liftState (Kleisli (\state -> getChar >>=
                                                         stack = fromIntegral (digitToInt val):drop 1 (stack state)
                                                     }
                                         )) >>> arr (+1)
-interpret (LoopStart (Just endPos)) = BFArrow { kleisli = second (arr (\state ->
-                                                                      if curVal state == 0
-                                                                      then (arr (const endPos), state)
-                                                                      else (arr (+1), state)))
-                                                           >>> arr unassoc
-                                                           >>> first (arr swap >>> app)
-                                             }
-interpret (LoopEnd (Just startPos)) = BFArrow { kleisli = second (arr (\state ->
-                                                                     if curVal state /= 0
-                                                                     then (arr (const startPos), state)
-                                                                     else (arr (+1), state)))
-                                                          >>> arr unassoc
-                                                          >>> first (arr swap >>> app)
-                                            }
+interpret (LoopStart (Just endPos)) = withState $ arr (\(a, state) ->
+                                                    if curVal state == 0
+                                                    then endPos
+                                                    else a+1
+                                                  )
+interpret (LoopEnd (Just startPos)) = withState $ arr (\(a, state) ->
+                                                    if curVal state /= 0
+                                                    then startPos
+                                                    else a+1
+                                                  )
 --interpret x = error $ "unexpected " ++ (show x)
 
 inBounds :: Array Int64 e -> Int64 -> Bool
