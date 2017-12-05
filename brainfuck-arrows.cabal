@@ -19,7 +19,11 @@ description:         Please see the README on Github at <https://github.com/gith
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     Control.Arrow.BrainFuck,
+                       Control.Arrow.BrainFuck.BFArrow,
+                       Control.Arrow.BrainFuck.Interpreter,
+                       Control.Arrow.BrainFuck.Parser,
+                       Control.Arrow.BrainFuck.Program
   build-depends:       base >= 4.7 && < 5,
                        array
   default-language:    Haskell2010
