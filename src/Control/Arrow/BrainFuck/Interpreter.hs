@@ -29,6 +29,8 @@ toChar :: Int64 -> Char
 toChar val = toEnum (fromIntegral val)
 
 interpret :: Op -> BFArrow Int64 Int64
+-- IncPtr, DecPtr, IncVal and DecVal only modify the state and we don't have
+-- to do anything besides that.
 interpret IncPtr = stateArr (\state -> let (cur:rest) = stack state in
                                 State {pre = cur:pre state, stack = rest}
                             ) >>> arr (+1)
@@ -41,6 +43,8 @@ interpret IncVal = stateArr (\state -> let (cur:rest) = stack state in
 interpret DecVal = stateArr (\state -> let (cur:rest) = stack state in
                                 State {pre = pre state, stack = (cur - 1):rest}
                             ) >>> arr (+1)
+-- PutCh, GetCh require us to send and receive something from the outside world
+-- therefore, we have to use the Kleisli type and lift it to BFArrow
 interpret PutCh = liftState (Kleisli (\state -> let (cur:rest) = stack state
                                                   in putChar (toChar cur) >>
                                                   return State {
@@ -54,6 +58,9 @@ interpret GetCh = liftState (Kleisli (\state -> getChar >>=
                                                         stack = fromIntegral (digitToInt val):drop 1 (stack state)
                                                     }
                                         )) >>> arr (+1)
+-- LoopStart and LoopEnd change the position of the stack pointer depending on the current state
+-- therefore we require withState which allows us to compute a new position with the current
+-- position and the current state
 interpret (LoopStart (Just endPos)) = withState $ arr (\(a, state) ->
                                                     if curVal state == 0
                                                     then endPos

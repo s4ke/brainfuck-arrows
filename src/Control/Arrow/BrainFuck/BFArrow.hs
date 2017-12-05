@@ -4,7 +4,7 @@ module Control.Arrow.BrainFuck.BFArrow(
   State(..),
   curVal,
 
-  BFArrow(..),
+  BFArrow,
   assoc,
   unassoc,
   liftState,
