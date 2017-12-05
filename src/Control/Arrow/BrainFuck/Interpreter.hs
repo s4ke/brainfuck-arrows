@@ -2,16 +2,13 @@ module Control.Arrow.BrainFuck.Interpreter(
   runProgram
 ) where
 
-import Control.Arrow.BrainFuck.BFArrow
-import Control.Arrow.BrainFuck.Program
+import           Control.Arrow.BrainFuck.BFArrow
+import           Control.Arrow.BrainFuck.Program
 
-import Data.Array
-import Data.Int
+import           Data.Array
 import           Data.Char
-import Data.Tuple
-
-
-
+import           Data.Int
+import           Data.Tuple
 
 runProgram :: Program -> BFArrow Int64 Int64
 runProgram program =
@@ -22,14 +19,11 @@ runProgram program =
             | program `inBounds` idx = Right idx
             | otherwise = Left idx
 
-
-
 mapArr :: ArrowChoice arr => arr a b -> arr [a] [b]
 mapArr f = arr listcase >>>
          arr (const []) ||| (f *** mapArr f >>> arr (uncurry (:)))
          where listcase []     = Left ()
                listcase (x:xs) = Right (x,xs)
-
 
 toChar :: Int64 -> Char
 toChar val = toEnum (fromIntegral val)

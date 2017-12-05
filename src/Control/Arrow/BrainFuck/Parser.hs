@@ -2,12 +2,12 @@ module Control.Arrow.BrainFuck.Parser(
   parse
 ) where
 
-import Control.Arrow.BrainFuck.Program
+import           Control.Arrow.BrainFuck.Program
 
-import Control.Arrow
+import           Control.Arrow
 
-import Data.List
 import           Data.Array
+import           Data.List
 
 parse :: String -> Program
 parse codeStr =
@@ -17,7 +17,6 @@ parse codeStr =
       newEnds = map (\(start, end) -> (end, LoopEnd (Just start))) braces
       progPrototype = listArray (0, fromIntegral (length ops) - 1) ops
   in (progPrototype//newStarts)//newEnds
-
 
 preParseOps :: String -> [Op]
 preParseOps = Prelude.map preParseSingle
